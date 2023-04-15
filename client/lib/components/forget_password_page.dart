@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:email_validator/email_validator.dart';
 import 'package:flutter/material.dart';
 import 'package:reminder_app/components/common/custom_form_button.dart';
@@ -5,6 +7,10 @@ import 'package:reminder_app/components/common/page_header.dart';
 import 'package:reminder_app/components/common/page_heading.dart';
 import 'package:reminder_app/components/login_page.dart';
 import 'package:reminder_app/components/common/custom_input_field.dart';
+
+import 'package:http/http.dart' as http;
+import 'config.dart';
+
 
 class ForgetPasswordPage extends StatefulWidget {
   const ForgetPasswordPage({Key? key}) : super(key: key);
@@ -97,12 +103,27 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
     );
   }
 
-  void _handleForgetPassword() {
+  void _handleForgetPassword() async {
     // forget password
     if (_forgetPasswordFormKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Submitting data..')),
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text('Submitting data..')),
+      // );
+      var reqBody = {
+        "email": emailController.text,
+      };
+
+    var response = await http.post(Uri.parse(forgotPassword),
+        headers: {"content-Type": "application/json"},
+        body: jsonEncode(reqBody));
+    print(response);
+    var jsonResponse = jsonDecode(response.body);
+    if(jsonResponse['status']!='FAILED'){
+
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email Sent')),
       );
+    }
     }
   }
 }

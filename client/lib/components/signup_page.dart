@@ -65,6 +65,7 @@ class _SignupPageState extends State<SignupPage> {
           body: jsonEncode(regBody));
       var jsonResponse = jsonDecode(response.body);
       print(jsonResponse['status']);
+      print(jsonResponse['message']);
 
       if (jsonResponse['status'] != "FAILED") {
         Navigator.push(

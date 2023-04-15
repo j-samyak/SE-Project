@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:reminder_app/components/dashboard.dart';
 import 'package:reminder_app/components/login_page.dart';
 import 'package:reminder_app/components/todo.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:reminder_app/components/common/custom_input_field.dart';
 import 'package:reminder_app/components/common/page_header.dart';
 import 'package:reminder_app/components/config.dart';
-import 'package:reminder_app/components/dashboard.dart';
 import 'package:reminder_app/components/forget_password_page.dart';
 import 'package:reminder_app/components/signup_page.dart';
 import 'package:email_validator/email_validator.dart';

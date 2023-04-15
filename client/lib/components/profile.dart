@@ -4,6 +4,7 @@ import 'package:get/route_manager.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:velocity_x/velocity_x.dart';
 import 'package:http/http.dart' as http;
+import 'package:reminder_app/components/common/custom_input_field.dart';
 import 'config.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:reminder_app/components/model/user.dart';
@@ -13,8 +14,8 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class profile extends StatefulWidget {
-  final token;
-  const profile({@required this.token, Key? key}) : super(key: key);
+  final data;
+  const profile({@required this.data, Key? key}) : super(key: key);
 
   // const profile({super.key});
 
@@ -25,40 +26,23 @@ class profile extends StatefulWidget {
 class _profileState extends State<profile> {
   TextEditingController displayNameController = TextEditingController();
   TextEditingController bioController = TextEditingController();
+  TextEditingController currentPasswordController = TextEditingController();
+  TextEditingController newPasswordController = TextEditingController();
+  TextEditingController confirmPasswordController = TextEditingController();
   bool isLoading = false;
 
   late String email;
   late String name;
   late String contactNumber;
-  // User user;
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   getUser();
-  // }
 
-  // getUser() async {
-  //   setState(() {
-  //     isLoading = true;
-  //   });
-  //   DocumentSnapshot doc = await usersRef.document(widget.currentUserId).get();
-  //   user = User.fromDocument(doc);
-  //   displayNameController.text = user.name;
-  //   bioController.text = user.bio;
-  //   setState(() {
-  //     isLoading = false;
-  //   });
-  // }
 
   @override
   void initState() {
     super.initState();
-    Map<String, dynamic> jwtDecodedToken = JwtDecoder.decode(widget.token);
-
-    email = jwtDecodedToken['email'];
-    name = jwtDecodedToken['name'];
-    contactNumber = jwtDecodedToken['contactNumber'];
+    email = widget.data['email'];
+    name = widget.data['name'];
+    contactNumber = widget.data['contactNumber'];
     displayNameController.text = name;
     bioController.text = contactNumber;
   }
@@ -130,6 +114,46 @@ class _profileState extends State<profile> {
     }
   }
 
+  void changePassword() async {
+    if(newPasswordController.text == confirmPasswordController.text){
+      var regBody = {
+        "email" : email,
+        "password" : newPasswordController.text,
+      };
+      var body = jsonEncode(regBody);
+      var response = await http.post(Uri.parse(updatePassword),
+          headers: {"content-Type": "application/json"},
+          body: jsonEncode(regBody));
+      
+      var jsonResponse = jsonDecode(response.body);
+
+      if (jsonResponse['status'] != "FAILED") {
+        Navigator.pop(context);
+        Navigator.pop(context);
+        passwordChangedMessage();
+      }
+    }
+  } 
+
+  void checkPassword() async {
+    if (currentPasswordController.text.isNotEmpty) {
+      var reqBody = {
+        "email" : email,
+        "password": currentPasswordController.text
+      };
+      var response = await http.post(Uri.parse(checkIfPassword),
+          headers: {"content-Type": "application/json"},
+          body: jsonEncode(reqBody));
+      var jsonResponse = jsonDecode(response.body);
+
+      if (jsonResponse['status'] == "SUCCESS") {
+        openNewPasswordField(context);        
+      }else{
+        incorrectPassword();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -198,6 +222,22 @@ class _profileState extends State<profile> {
                     ),
                   ),
                 ),
+                ElevatedButton(
+                  onPressed: () {
+                    openPasswordChangeField(context);
+                  },
+                  child: Text(
+                    "change password",
+                    style: TextStyle(
+                      // color: Theme
+                      //     .of(context)
+                      //     .primaryColor,
+                      color: Colors.white,
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
                 Padding(
                   padding: EdgeInsets.all(16.0),
                   child: TextButton.icon(
@@ -219,4 +259,95 @@ class _profileState extends State<profile> {
       ),
     );
   }
+
+
+  Future<void> openPasswordChangeField(BuildContext context) async {
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+              title: Text('enter current password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: currentPasswordController,
+                    keyboardType: TextInputType.text,
+                    decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
+                        hintText: "current password",
+                        border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(10.0)))),
+                  ).p4().px8(),
+                  ElevatedButton(
+                    onPressed: (){
+                      checkPassword();
+                    },
+                    child: Text("done")
+                  )          
+                ],
+              ));
+        });
+  }
+
+  Future<void> openNewPasswordField(BuildContext context) async {
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+              title: Text('enter new password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CustomInputField(
+                          controller: newPasswordController,
+                          labelText: 'new password',
+                          hintText: 'enter new password',
+                          isDense: true,
+                          validator: (textValue) {
+                          if (textValue == null || textValue.isEmpty) {
+                            return 'Password is required!';
+                          }
+                          return null;
+                        },),
+                 CustomInputField(
+                          controller: confirmPasswordController,
+                          labelText: 'confirm password',
+                          hintText: 'enter password again',
+                          isDense: true,
+                          validator: (textValue) {
+                          if (textValue != newPasswordController.text) {
+                            return 'password does not match';
+                          }
+                          return null;
+                        },),
+                  ElevatedButton(
+                    onPressed: (){
+                      changePassword();
+                    },
+                    child: Text("change password")
+                  )          
+                ],
+              ));
+        });
+  }
+
+  void incorrectPassword() {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('enter correct password')),
+      );
+    
+  }
+
+  void passwordChangedMessage() {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('password changed successfully')),
+      );
+    
+  }
+
 }

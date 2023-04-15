@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+
 import 'package:get/route_manager.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:reminder_app/components/profile.dart';
@@ -9,9 +10,17 @@ import 'config.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:reminder_app/components/model/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:math';
+
 
 import 'login_page.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import './notificationService.dart';
+
+Random random = new Random();
 
 class todo extends StatefulWidget {
   final token;
@@ -27,6 +36,10 @@ class _todoState extends State<todo> {
   late String name;
   // late String contactNumber;
   late SharedPreferences prefs;
+
+  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  final Notifications _notifications = Notifications();
+
 
   TextEditingController _todoTitle = TextEditingController();
   TextEditingController _todoDesc = TextEditingController();
@@ -46,8 +59,16 @@ class _todoState extends State<todo> {
     getTodoList(this.email);
     print("todo list received");
 
+    // scheduleNotification(title: "sample", description: "sample", Y: DateTime.now().year, M: DateTime.now().month,
+    //  D: DateTime.now().day, H: TimeOfDay.now().hour, minute: TimeOfDay.now().minute+2);
+
     initSharedPref();
+    initNotifies();
   }
+
+    //init notifications
+  Future initNotifies() async => flutterLocalNotificationsPlugin =
+      await _notifications.initNotifies(context);
 
   void initSharedPref() async {
     prefs = await SharedPreferences.getInstance();
@@ -59,7 +80,7 @@ class _todoState extends State<todo> {
         "email": email,
         "title": _todoTitle.text,
         "desc": _todoDesc.text,
-        "datetime": dateTime.toString()
+        "datetime" : dateTime.toString()
       };
 
       var response = await http.post(Uri.parse(addtodo),
@@ -71,6 +92,9 @@ class _todoState extends State<todo> {
       print(jsonResponse['status']);
 
       if (jsonResponse['status']) {
+        tz.initializeTimeZones();
+        tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+        await _notifications.showNotification(_todoTitle.text, _todoDesc.text, dateTime.millisecondsSinceEpoch, random.nextInt(100000000), flutterLocalNotificationsPlugin);
         _todoDesc.clear();
         _todoTitle.clear();
         Navigator.pop(context);
@@ -78,15 +102,19 @@ class _todoState extends State<todo> {
       } else {
         print("SomeThing Went Wrong");
       }
+      
+      // showNotification(_todoTitle.text,_todoDesc.text,100,1,flutterLocalNotificationsPlugin);
     }
   }
+
 
   void updateTodo(id) async {
     if (_todoTitle.text.isNotEmpty && _todoDesc.text.isNotEmpty) {
       var regBody = {
         "id": id,
         "title": _todoTitle.text,
-        "desc": _todoDesc.text
+        "desc": _todoDesc.text,
+        "datetime" : dateTime.toString()
       };
 
       print('how are you');
@@ -102,6 +130,9 @@ class _todoState extends State<todo> {
       print(jsonResponse['status']);
 
       if (jsonResponse['status']) {
+        tz.initializeTimeZones();
+        tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+        await _notifications.showNotification(_todoTitle.text, _todoDesc.text, dateTime.millisecondsSinceEpoch, random.nextInt(100000000), flutterLocalNotificationsPlugin);
         _todoDesc.clear();
         _todoTitle.clear();
         Navigator.pop(context);
@@ -140,21 +171,6 @@ class _todoState extends State<todo> {
     getTodoList(email);
   }
 
-  // void goToEditItemView(Todo item){
-  //   // We re-use the NewTodoView and push it to the Navigator stack just like
-  //   // before, but now we send the title of the item on the class constructor
-  //   // and expect a new title to be returned so that we can edit the item
-  //   Navigator.of(context).push(MaterialPageRoute(builder: (context){
-  //     return NewTodoView(item: item);
-  //   })).then((title){
-  //     if(title != null) {
-  //       setState((){
-  //         editItem(item, title.toString());
-  //       });
-  //     }
-  //   });
-  // }
-
   void navigateToProfilePage(String email) async {
     var reqBody = {
       "email": email,
@@ -166,14 +182,65 @@ class _todoState extends State<todo> {
     print(response);
     var jsonResponse = jsonDecode(response.body);
 
-    var myToken = jsonResponse['token'];
-    prefs.setString('token', myToken);
 
-    if (myToken != null) {
+    if (jsonResponse['status'] != 'FAILED') {
+    var data = jsonResponse['data'];
       Navigator.push(context,
-          MaterialPageRoute(builder: (context) => profile(token: myToken)));
+          MaterialPageRoute(builder: (context) => profile(data: data)));
     }
-  }
+  }    
+
+  // Future<void> scheduleNotification({
+  //                 required String title,
+  //                 required String description,
+  //                 required int Y,
+  //                 required int M,
+  //                 required int D,
+  //                 required int H,
+  //                 required int minute
+  // }) async {
+  //   print("trying for notification");
+  //   var androidPlatformChannelSpecifics = const AndroidNotificationDetails(
+  //       'channel id', 'channel name','channel description',
+  //       // icon: 'mipmap/launcher_icon',
+  //       // largeIcon: DrawableResourceAndroidBitmap('mipmap/launcher_icon'),
+  //       priority: Priority.max,
+  //       importance: Importance.max);
+    
+  //   print("android notification");
+
+  //   // var iOSPlatformChannelSpecifics = const DarwinNotificationDetails();
+
+  //   var platformChannelSpecifics = NotificationDetails(
+  //       android: androidPlatformChannelSpecifics,
+  //       // iOS: iOSPlatformChannelSpecifics
+  //     );
+
+  //   tz.initializeTimeZones();
+  //   print("timezone initialised");
+
+  //   final startTime = DateTime(Y,M,D,H,minute);
+  //   final currentTime = DateTime.now();
+
+  //   final diff_dy = currentTime.difference(startTime).inDays;
+  //   final diff_hr = currentTime.difference(startTime).inHours;
+  //   final diff_mn = currentTime.difference(startTime).inMinutes;
+  //   final diff_sc = currentTime.difference(startTime).inSeconds;
+
+  //   flutterLocalNotificationsPlugin.zonedSchedule(
+  //     0,
+  //     title,
+  //     description,
+  //     tz.TZDateTime.now(tz.local)
+  //         .add(Duration(minutes: -diff_mn, hours: -diff_hr, seconds: -diff_sc)),
+  //     platformChannelSpecifics,
+  //     uiLocalNotificationDateInterpretation:
+  //         UILocalNotificationDateInterpretation.absoluteTime,
+  //     androidAllowWhileIdle: true,
+  //     payload: "Your Custom Data",
+  //   );
+  // }
+
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +329,8 @@ class _todoState extends State<todo> {
                                   print('${items![index]['title']}');
                                   print('${items![index]['description']}');
                                   _showDescription('${items![index]['title']}',
-                                      '${items![index]['description']}');
+                                      '${items![index]['description']}',
+                                      '${items![index]['datetime']}');
                                 },
                                 onLongPress: () {
                                   print('${items![index]['_id']}');
@@ -312,13 +380,20 @@ class _todoState extends State<todo> {
     );
   }
 
-  Future<void> _showDescription(String title, String description) async {
+  Future<void> _showDescription(String title, String description, String datetime) async {
     return showDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
             title: Text(title),
-            content: Text(description),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(description),
+                Text(datetime)
+              ],
+            )
+
           );
         });
   }
@@ -422,6 +497,41 @@ class _todoState extends State<todo> {
         });
   }
 
+  
+  
+  // Future<void> showNotification(int id, String title, String body, String time) async {
+  //   if(DateTime.now() == time){
+  //     await flutterLocalNotificationsPlugin.zonedSchedule(
+  //       id,
+  //       title,
+  //       body,
+  //       tz.TZDateTime.now(tz.local).add(Duration(
+  //           seconds: 1)), //schedule the notification to show after 2 seconds.
+  //       NotificationDetails(
+          
+  //         // Android details
+  //         android: AndroidNotificationDetails('main_channel', 'Main Channel',"reminder",
+  //             // channelDescription: ,
+  //             importance: Importance.defaultImportance,
+  //             priority: Priority.defaultPriority),
+  //         // iOS details
+  //         iOS: IOSNotificationDetails(
+  //           sound: 'default.wav',
+  //           presentAlert: true,
+  //           presentBadge: true,
+  //           presentSound: true,
+  //         ),
+  //       ),
+        
+  //       // Type of time interpretation
+  //       uiLocalNotificationDateInterpretation:
+  //           UILocalNotificationDateInterpretation.absoluteTime,
+  //       androidAllowWhileIdle:
+  //           true, // To show notification even when the app is closed
+  //     );
+  //   }
+  // }
+
   Future<void> _displayTextEditDialog(
       String id, String title, String description) async {
     return showDialog(
@@ -503,6 +613,12 @@ class _todoState extends State<todo> {
   bool showDate = false;
   bool showTime = false;
   bool showDateTime = false;
+
+  int yearOfReminder = DateTime.now().year;
+  int monthOfReminder = DateTime.now().month;
+  int dayOfReminder = DateTime.now().day;
+  int hourOfReminder = TimeOfDay.now().hour;
+  int minuteOfReminder = TimeOfDay.now().minute;
 
   Future<DateTime> _selectDate(BuildContext context) async {
     final selected = await showDatePicker(
