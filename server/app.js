@@ -8,6 +8,7 @@ const ToDoRoute = require('./routers/todo.router');
 const app = express();
 app.use(morgan("dev"));
 app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({extended: true}))
 
 
 app.use("/todo",ToDoRoute);

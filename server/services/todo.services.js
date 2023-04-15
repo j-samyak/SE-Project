@@ -9,16 +9,16 @@ class ToDoService {
 
     // }
 
-    static async EditToDo(id, title, desc, res) {
+    static async EditToDo(id, title, desc, datetime, res) {
         if (id != null && title != null && desc != null) {
             try {
-                await ToDoModel.updateOne({ _id: id }, { $set: { title: title, description: desc } });
-                res.status(200).json({ message: "data is updated" });
+                await ToDoModel.updateOne({ _id: id }, { $set: { title: title, description: desc, datetime: datetime } });
+                res.status(200).json({ message: "data is updated", status: true });
             } catch {
-                res.status(404).json({ message: "something wrong!!" });
+                res.status(404).json({ message: "something wrong!!", status: false });
             }
         } else {
-            res.status(404).json({ message: "data is emty plz write something" });
+            res.status(404).json({ message: "data is emty plz write something", status: false });
         }
     }
 

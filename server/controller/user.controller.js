@@ -1,5 +1,5 @@
 const UserServices = require("../services/user.services");
-const { sendEmailVerificationLink } = require("../config/email");
+const { sendEmailVerificationLink, sendPasswordResetLink } = require("../config/email");
 const path = require("path");
 
 require("dotenv").config();
@@ -76,8 +76,139 @@ exports.verifyUser = async (req, res) => {
         if (user.error) {
             return res.status(400).sendFile(path.join(__dirname, "../views/verificationError.html"));
         }
-        return res.status(400).sendFile(path.join(__dirname, "../views/verificationSuccess.html"));
+        return res.status(200).sendFile(path.join(__dirname, "../views/verificationSuccess.html"));
     } else {
         return res.status(400).sendFile(path.join(__dirname, "../views/error.html"));
     }
 };
+
+exports.raisePasswordChangeRequest = async (req, res) => {
+    try {
+        const {email} = req.body;
+        if(!email || email==""){
+            return res.status(400).json({
+                status: "FAILED",
+                message: "invalid Email",
+            });
+        }
+
+        let user = await UserServices.getUserByEmail(email);
+        if(!user){
+            return res.status(400).json({
+                status: "FAILED",
+                message: "User not found",
+            });
+        }
+
+        let verifyToken = await UserServices.generateToken({ id: user._id, email: user.email }, process.env.JWT_SECRET, 5 * 60 * 1000);
+        let link = "http://" + req.get("host") + "/reset/" + verifyToken;
+        console.log(email, link);
+        await sendPasswordResetLink(email, user.name, link)
+        return res.status(200).json({ status: "SUCCESS", message: "Email Sent Successfully." });
+    } catch (err){
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Something went wrong",
+        });
+    }
+}
+
+exports.viewPasswordResetPage = async (req, res) => {
+    let token = req.params.token;
+    if (token) {
+        let user = await UserServices.getUserByToken(token);
+        if (user.error) {
+            return res.status(400).sendFile(path.join(__dirname, "../views/error.html"));
+        }
+        return res.status(200).sendFile(path.join(__dirname, "../views/passwordReset.html"));
+    } else {
+        return res.status(400).sendFile(path.join(__dirname, "../views/error.html"));
+    }
+}
+
+exports.verifyPasswordReset = async (req, res) => {
+    let token = req.params.token;
+    let {newPassword} = req.body;
+    if (token) {
+        let user = await UserServices.updatePassword(token, newPassword);
+        if (user.error) {
+            return res.status(400).sendFile(path.join(__dirname, "../views/error.html"));
+        }
+        return res.status(200).sendFile(path.join(__dirname, "../views/passwordResetSuccess.html"));
+    } else {
+        return res.status(400).sendFile(path.join(__dirname, "../views/error.html"));
+    }
+}
+
+exports.gotoProfile = async(req,res,next)=>{
+    try{
+        console.log(req.body)
+        const {email} = req.body;
+
+        const user = await UserServices.getUserByEmail(email);
+        if(!user){
+            res.status(404).json({
+                status: "FAILED",
+                message: "Email has not been verified yet. Check your inbox",
+            });
+        }else{           
+            res.status(200).json({status:true, data: user})
+        }
+
+    }catch(error){
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Something went wrong",
+        });
+    }
+}
+
+exports.updateDetails =  async (req,res)=>{
+    try {
+        const { name,email, contactNumber } = req.body;
+        console.log(email);
+        let userData = await UserServices.updateDetails(name,email, contactNumber);
+        res.status(200).json({status: true,success:userData});
+    } catch (error) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Something went wrong",
+        });
+    }
+}
+
+exports.checkPassword = async(req,res)=>{
+    try{
+        const { email, password } = req.body;
+        console.log(email, password);
+
+        const user = await UserServices.getUserByEmail(email);
+        const ismatch = await user.comparePassword(password);
+        if (ismatch === false) {
+            return res.status(400).json({
+                status: "FAILED",
+                message: "Something went wrong",
+            });
+        }
+        res.status(200).json({ status: "SUCCESS" });        
+    }catch{
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Something went wrong",
+        });
+    }
+}
+
+exports.updatePassword = async (req,res) => {
+    try {
+        const {email,password } = req.body;
+        console.log(email);
+        let userData = await UserServices.updatePasswordByEamil(email,password);
+        res.status(200).json({status: true,success:userData});
+    } catch (error) {
+        return res.status(400).json({
+            status: "FAILED",
+            message: "Something went wrong",
+        });
+    }
+}

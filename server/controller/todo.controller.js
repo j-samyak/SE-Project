@@ -14,9 +14,9 @@ exports.createToDo = async (req, res, next) => {
 
 exports.EditToDo = async (req, res, next) => {
     try {
-        const { id, title, desc } = req.body;
+        const { id, title, desc, datetime } = req.body;
         console.log(id);
-        let todoData = await ToDoService.EditToDo(id, title, desc, res);
+        let todoData = await ToDoService.EditToDo(id, title, desc, new Date(datetime), res);
         // res.json({status: true,success:todoData});
     } catch (error) {
         console.log(error, "err---->");
