@@ -15,7 +15,7 @@ HOW TO RUN:
 To clone this project, open your terminal or cmd
 
 cd folder/to/clone-into/
-git clone https://github.com/madeeldev/flutter-simple-login-signup.git
+git clone https://github.com/j-samyak/SE-Project.git
 
 Then locate the project on your system and open with android studio or Vscode or intellij IDE.
 
